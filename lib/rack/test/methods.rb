@@ -28,6 +28,7 @@ module Rack
 
         # Header-related features
         :header,
+        :clear_headers,
         :set_cookie,
         :clear_cookies,
         :authorize,

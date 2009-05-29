@@ -189,9 +189,17 @@ module Rack
           process_request(uri.path, auth_env)
         else
           yield last_response if block_given?
-
+          
+          clear_headers
+          
           last_response
         end
+      end
+      
+      def clear_headers
+        old_auth_header = @headers["HTTP_AUTHORIZATION"]
+        @headers = {} # reset headers
+        header("HTTP_AUTHORIZATION", old_auth_header) if old_auth_header
       end
 
       def digest_auth_header

@@ -113,12 +113,12 @@ describe Rack::Test::Session do
       last_request.env["User-Agent"].should == "Firefox"
     end
 
-    it "persists across multiple requests" do
+    it "does not persist across multiple requests" do
       header "User-Agent", "Firefox"
       request "/"
       request "/"
 
-      last_request.env["User-Agent"].should == "Firefox"
+      last_request.env["User-Agent"].should be_nil
     end
 
     it "overwrites previously set headers" do
@@ -142,6 +142,25 @@ describe Rack::Test::Session do
       request "/", "User-Agent" => "Safari"
 
       last_request.env["User-Agent"].should == "Safari"
+    end
+  end
+  
+  describe "clear_headers" do
+    it "should purge the old headers" do
+      header "La-La-La", "I Can't Hear You"
+      clear_headers
+      request "/"
+      
+      last_request.env.should_not have_key("La-La-La")
+    end
+    it "should preserve authorization headers" do
+      header "La-La-La", "I Can't Hear You"
+      basic_authorize "mwilson", "secret"
+      clear_headers
+      request "/"
+      
+      last_request.env.should_not have_key("La-La-La")
+      last_request.env.should have_key("HTTP_AUTHORIZATION")
     end
   end
 
