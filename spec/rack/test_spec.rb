@@ -1,6 +1,18 @@
 require File.dirname(__FILE__) + "/../spec_helper"
 
 describe Rack::Test::Session do
+  describe "initialization" do
+    it "supports being initialized with a Rack::MockSession app" do
+      session = Rack::Test::Session.new(Rack::MockSession.new(app))
+      session.request("/").should be_ok
+    end
+
+    it "supports being initialized with an app" do
+      session = Rack::Test::Session.new(app)
+      session.request("/").should be_ok
+    end
+  end
+
   describe "#request" do
     it "requests the URI using GET by default" do
       request "/"
@@ -82,6 +94,13 @@ describe Rack::Test::Session do
       it "uses application/x-www-form-urlencoded as the CONTENT_TYPE" do
         request "/", "REQUEST_METHOD" => "POST"
         last_request.env["CONTENT_TYPE"].should == "application/x-www-form-urlencoded"
+      end
+    end
+
+    context "when CONTENT_TYPE is specified in the env" do
+      it "does not overwrite the CONTENT_TYPE" do
+        request "/", "CONTENT_TYPE" => "application/xml"
+        last_request.env["CONTENT_TYPE"].should == "application/xml"
       end
     end
 
@@ -238,6 +257,32 @@ describe Rack::Test::Session do
     end
   end
 
+  describe "after_request" do
+    it "runs callbacks after each request" do
+      ran = false
+
+      rack_mock_session.after_request do
+        ran = true
+      end
+
+      get "/"
+      ran.should == true
+    end
+
+    it "runs multiple callbacks" do
+      count = 0
+
+      2.times do
+        rack_mock_session.after_request do
+          count += 1
+        end
+      end
+
+      get "/"
+      count.should == 2
+    end
+  end
+
   describe "#get" do
     it_should_behave_like "any #verb methods"
 
@@ -248,6 +293,11 @@ describe Rack::Test::Session do
     it "uses the provided params hash" do
       get "/", :foo => "bar"
       last_request.GET.should == { "foo" => "bar" }
+    end
+
+    it "sends params with parens in names" do
+      get "/", "foo(1i)" => "bar"
+      last_request.GET["foo(1i)"].should == "bar"
     end
 
     it "supports params with encoding sensitive names" do
@@ -300,6 +350,13 @@ describe Rack::Test::Session do
       post "/", "Lobsterlicious!"
       last_request.body.read.should == "Lobsterlicious!"
     end
+
+    context "when CONTENT_TYPE is specified in the env" do
+      it "does not overwrite the CONTENT_TYPE" do
+        post "/", {}, { "CONTENT_TYPE" => "application/xml" }
+        last_request.env["CONTENT_TYPE"].should == "application/xml"
+      end
+    end
   end
 
   describe "#put" do
@@ -307,6 +364,11 @@ describe Rack::Test::Session do
 
     def verb
       "put"
+    end
+
+    it "accepts a body" do
+      put "/", "Lobsterlicious!"
+      last_request.body.read.should == "Lobsterlicious!"
     end
   end
 

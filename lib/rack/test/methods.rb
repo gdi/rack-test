@@ -5,12 +5,40 @@ module Rack
     module Methods
       extend Forwardable
 
-      def rack_test_session
-        @_rack_test_session ||= Rack::Test::Session.new(app)
+      def rack_mock_session(name = :default)
+        return build_rack_mock_session unless name
+
+        @_rack_mock_sessions ||= {}
+        @_rack_mock_sessions[name] ||= build_rack_mock_session
       end
 
-      def rack_mock_session
-        @_rack_mock_session ||= Rack::MockSession.new(app)
+      def build_rack_mock_session
+        Rack::MockSession.new(app)
+      end
+
+      def rack_test_session(name = :default)
+        return build_rack_test_session(name) unless name
+
+        @_rack_test_sessions ||= {}
+        @_rack_test_sessions[name] ||= build_rack_test_session(name)
+      end
+
+      def build_rack_test_session(name)
+        Rack::Test::Session.new(rack_mock_session(name))
+      end
+
+      def current_session
+        rack_test_session(_current_session_names.last)
+      end
+
+      def with_session(name)
+        _current_session_names.push(name)
+        yield rack_test_session(name)
+        _current_session_names.pop
+      end
+
+      def _current_session_names
+        @_current_session_names ||= [:default]
       end
 
       METHODS = [
@@ -40,7 +68,7 @@ module Rack
         :last_request
       ]
 
-      def_delegators :rack_test_session, *METHODS
+      def_delegators :current_session, *METHODS
     end
   end
 end
